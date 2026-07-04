@@ -9,7 +9,8 @@
 		"lint": "biome check .",
 		"format": "biome format --write .",
 		"typecheck": "tsc --noEmit",
-		"seed": "tsx scripts/seed-books.ts"
+		"seed": "tsx scripts/seed-books.ts",
+		"seed:tree": "tsx scripts/seed-management-tree.ts"
 	},
 	"dependencies": {
 		"@supabase/ssr": "^0.12.0",
