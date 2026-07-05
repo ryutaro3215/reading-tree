@@ -123,66 +123,135 @@ export default function HomePage() {
 				</div>
 			</section>
 
-			{/* 4. 機能 */}
+			{/* 4. ペルソナの声（吹き出し） */}
 			<section
 				style={{ maxWidth: 1120, margin: "0 auto", padding: "84px 24px" }}
 			>
 				<div
 					style={{
 						display: "grid",
-						gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-						gap: 22,
+						gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+						gap: 32,
 					}}
 				>
 					{[
 						{
-							num: "01",
-							tag: "時間",
-							body: "次に読む本を選ぶのに毎回30分溶かす時間をなくす",
+							initial: "Y",
+							persona: "コンサルタント 1年目・24歳",
+							quote:
+								"経営学の本を薦められるたびに、ポーターとドラッカーどっちから読むべきか毎回1時間以上悩む。3週間経っても結局まだ何も読めていない。",
 						},
 						{
-							num: "02",
-							tag: "地位",
-							body: "会議で経営理論の土台を語れるようになる",
+							initial: "K",
+							persona: "戦略コンサル 若手社員・26歳",
+							quote:
+								"会議で上司が当たり前に引用する理論を、いつもわかってるふりで聞き流している。ちゃんと土台を作りたいのに、何から始めればいいかすらわからない。",
 						},
 						{
-							num: "03",
-							tag: "苦痛除去",
-							body: "レベルの合わない本を買って挫折するリスクを減らす",
+							initial: "T",
+							persona: "MBA受験を目指す社会人・28歳",
+							quote:
+								"意気込んで企業戦略論を買ったら難しすぎて3章で挫折。レベルに合わない本をAmazonで買い続けるのをそろそろやめたい。",
 						},
-					].map(({ num, tag, body }) => (
-						<div
-							key={num}
-							style={{
-								border: "1px solid #E4E7EE",
-								borderRadius: 14,
-								padding: "30px 26px",
-								background: "#FFFFFF",
-							}}
-						>
+					].map(({ initial, persona, quote }) => (
+						<div key={initial}>
+							{/* 吹き出しカード */}
 							<div
 								style={{
-									fontFamily: "Inter, sans-serif",
-									fontSize: 12,
-									fontWeight: 600,
-									letterSpacing: "0.1em",
-									color: "#1E3A8A",
-									textTransform: "uppercase",
-									marginBottom: 18,
+									background: "#FFFFFF",
+									border: "1px solid #E4E7EE",
+									borderRadius: 16,
+									padding: "28px 26px",
+									position: "relative",
 								}}
 							>
-								{num}&nbsp;&nbsp;{tag}
+								{/* 装飾クォートマーク */}
+								<span
+									aria-hidden="true"
+									style={{
+										position: "absolute",
+										top: 14,
+										left: 18,
+										fontSize: 56,
+										lineHeight: 1,
+										color: "rgba(30,58,138,0.07)",
+										fontFamily: "Georgia, serif",
+										userSelect: "none",
+									}}
+								>
+									"
+								</span>
+								<p
+									style={{
+										fontSize: 15,
+										lineHeight: 1.8,
+										color: "#1A2233",
+										margin: 0,
+										position: "relative",
+										paddingTop: 6,
+									}}
+								>
+									「{quote}」
+								</p>
 							</div>
-							<p
+							{/* 吹き出しの尻尾 */}
+							<div style={{ position: "relative", height: 12, marginLeft: 30 }}>
+								<div
+									style={{
+										position: "absolute",
+										top: 0,
+										left: 0,
+										width: 0,
+										height: 0,
+										borderLeft: "11px solid transparent",
+										borderRight: "11px solid transparent",
+										borderTop: "11px solid #E4E7EE",
+									}}
+								/>
+								<div
+									style={{
+										position: "absolute",
+										top: 0,
+										left: 1,
+										width: 0,
+										height: 0,
+										borderLeft: "10px solid transparent",
+										borderRight: "10px solid transparent",
+										borderTop: "10px solid #FFFFFF",
+									}}
+								/>
+							</div>
+							{/* ペルソナ */}
+							<div
 								style={{
-									fontSize: 18,
-									fontWeight: 700,
-									lineHeight: 1.6,
-									margin: 0,
+									display: "flex",
+									alignItems: "center",
+									gap: 10,
+									marginTop: 6,
+									paddingLeft: 4,
 								}}
 							>
-								{body}
-							</p>
+								<div
+									style={{
+										width: 36,
+										height: 36,
+										borderRadius: "50%",
+										background: "rgba(30,58,138,0.10)",
+										display: "flex",
+										alignItems: "center",
+										justifyContent: "center",
+										fontSize: 14,
+										fontWeight: 700,
+										color: "#1E3A8A",
+										flexShrink: 0,
+									}}
+								>
+									{initial}
+								</div>
+								<span style={{ fontSize: 13, color: "#5B6577" }}>
+									{persona}
+								</span>
+							</div>
 						</div>
 					))}
 				</div>
