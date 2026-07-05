@@ -21,7 +21,7 @@ export function FooterCta() {
 						今日から、経営学の迷子をやめる
 					</h2>
 					<Link
-						href="/fields/keieigaku"
+						href="/fields/business-administration"
 						onClick={() => capture("cta_click_footer")}
 						style={{
 							display: "inline-block",

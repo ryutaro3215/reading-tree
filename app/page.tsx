@@ -74,7 +74,7 @@ export default function HomePage() {
 							完全無料。運営費はAmazon/楽天の紹介リンクでまかなっています
 						</span>
 						<Link
-							href="/fields/keieigaku"
+							href="/fields/business-administration"
 							style={{
 								textDecoration: "none",
 								background: "#1E3A8A",

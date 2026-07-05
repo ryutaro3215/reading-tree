@@ -61,7 +61,7 @@ export function Hero() {
 					}}
 				>
 					<Link
-						href="/fields/keieigaku"
+						href="/fields/business-administration"
 						onClick={() => capture("cta_click_hero")}
 						style={{
 							textDecoration: "none",
