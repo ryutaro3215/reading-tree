@@ -629,6 +629,7 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks }: Props) {
 									type="button"
 									aria-label={`${b.title} (${ls.label})`}
 									aria-pressed={sel}
+									onPointerDown={(e) => e.stopPropagation()}
 									onMouseEnter={() => setHoveredBookId(b.id)}
 									onMouseLeave={() => setHoveredBookId(null)}
 									onClick={() => {
