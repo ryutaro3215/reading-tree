@@ -114,9 +114,7 @@ const CATEGORY_MAP: Record<string, Category> = {
 	// マーケティング
 	"コトラー&ケラーのマーケティング・マネジメント 基本編": "marketing",
 	"経営管理 (新版)": "strategy",
-	// 財務・ファイナンス
 	"[新版] MBA経営戦略": "strategy",
-	"リサーチ・デザイン": "finance",
 	企業評価の組織論的研究: "strategy",
 	経営の知的思考: "strategy",
 };
