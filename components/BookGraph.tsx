@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { capture } from "@/lib/posthog";
 
 type Level = "beginner" | "intermediate" | "advanced";
+type Category = "strategy" | "marketing" | "finance";
 
 type RawBook = {
 	id: string;
@@ -13,7 +14,7 @@ type RawBook = {
 	level: Level;
 };
 
-type BookNode = RawBook & { x: number; y: number };
+type BookNode = RawBook & { x: number; y: number; category: Category };
 
 type RawEdge = { fromId: string; toId: string };
 
@@ -24,14 +25,103 @@ type Props = {
 	rawEdges: RawEdge[];
 };
 
-const CANVAS_SIZE = 1100;
-const CENTER = { x: 550, y: 550 };
+// ─── Canvas & layout ───────────────────────────────────────────────────────
+const CANVAS_SIZE = 1300;
+const CX = 650;
+const CY = 650;
+const DEG = Math.PI / 180;
+
 const RADII: Record<Level, number> = {
-	beginner: 160,
-	intermediate: 340,
-	advanced: 520,
+	beginner: 190,
+	intermediate: 385,
+	advanced: 560,
 };
 
+// ─── Sectors (3 × 120°, with 4° gap between each) ────────────────────────
+const SECTOR_ARC_DEG = 116; // usable arc per sector
+const SECTORS: {
+	id: Category;
+	label: string;
+	centerDeg: number;
+	startDeg: number;
+	endDeg: number;
+	fill: string;
+	hoverFill: string;
+	labelColor: string;
+}[] = [
+	{
+		id: "strategy",
+		label: "経営戦略・組織",
+		centerDeg: -90,
+		startDeg: -148,
+		endDeg: -32,
+		fill: "rgba(30,58,138,0.03)",
+		hoverFill: "rgba(30,58,138,0.07)",
+		labelColor: "#1E3A8A",
+	},
+	{
+		id: "marketing",
+		label: "マーケティング",
+		centerDeg: 30,
+		startDeg: -28,
+		endDeg: 88,
+		fill: "rgba(6,95,70,0.03)",
+		hoverFill: "rgba(6,95,70,0.07)",
+		labelColor: "#065F46",
+	},
+	{
+		id: "finance",
+		label: "財務・ファイナンス",
+		centerDeg: 150,
+		startDeg: 92,
+		endDeg: 208,
+		fill: "rgba(120,53,15,0.03)",
+		hoverFill: "rgba(120,53,15,0.07)",
+		labelColor: "#78350F",
+	},
+];
+
+const SECTOR_LABEL_R = 630;
+
+// ─── Book → category mapping (by title) ───────────────────────────────────
+const CATEGORY_MAP: Record<string, Category> = {
+	// 経営戦略・組織
+	経営学入門: "strategy",
+	経営学とはなにか: "strategy",
+	ゼミナール経営学入門: "strategy",
+	領域を超える経営学: "strategy",
+	世界は経営でできている: "strategy",
+	"逆・タイムマシン経営論": "strategy",
+	世界標準の経営理論: "strategy",
+	経営戦略入門: "strategy",
+	"経営戦略の論理 (第4版)": "strategy",
+	競争戦略論I: "strategy",
+	ストーリーとしての競争戦略: "strategy",
+	"組織論 (補訂版)": "strategy",
+	"組織行動のマネジメント (新版)": "strategy",
+	"知識創造企業 (新装版)": "strategy",
+	失敗の本質: "strategy",
+	両利きの経営: "strategy",
+	企業戦略論: "strategy",
+	"企業戦略論[上]基本編:競争優位の構築と持続": "strategy",
+	"企業戦略論[中]事業戦略編:競争優位の構築と持続": "strategy",
+	"企業戦略論[下]全社戦略編:競争優位の構築と持続": "strategy",
+	経営戦略の思考法: "strategy",
+	組織の不条理: "strategy",
+	// マーケティング
+	"コトラー&ケラーのマーケティング・マネジメント 基本編": "marketing",
+	アントレプレナーシップ: "marketing",
+	"イノベーションのジレンマ (増補改訂版)": "marketing",
+	知識創造の方法論: "marketing",
+	// 財務・ファイナンス
+	"経営管理 (新版)": "finance",
+	"[新版] MBA経営戦略": "finance",
+	"リサーチ・デザイン": "finance",
+	企業評価の組織論的研究: "finance",
+	経営の知的思考: "finance",
+};
+
+// ─── Visual styles ─────────────────────────────────────────────────────────
 const LEVEL_STYLE: Record<
 	Level,
 	{
@@ -45,7 +135,7 @@ const LEVEL_STYLE: Record<
 	}
 > = {
 	beginner: {
-		r: 30,
+		r: 28,
 		fill: "#FFFFFF",
 		border: "1.5px solid #1E3A8A",
 		textColor: "#1A2233",
@@ -54,8 +144,8 @@ const LEVEL_STYLE: Record<
 		badgeColor: "#1E3A8A",
 	},
 	intermediate: {
-		r: 38,
-		fill: "rgba(30,58,138,0.16)",
+		r: 36,
+		fill: "rgba(30,58,138,0.14)",
 		border: "1.5px solid #1E3A8A",
 		textColor: "#1A2233",
 		label: "中級",
@@ -63,7 +153,7 @@ const LEVEL_STYLE: Record<
 		badgeColor: "#1E3A8A",
 	},
 	advanced: {
-		r: 48,
+		r: 46,
 		fill: "#1E3A8A",
 		border: "1.5px solid #1E3A8A",
 		textColor: "#FFFFFF",
@@ -73,38 +163,60 @@ const LEVEL_STYLE: Record<
 	},
 };
 
-function layoutBooks(rawBooks: RawBook[]): { books: BookNode[] } {
-	const groups: Record<Level, RawBook[]> = {
-		beginner: rawBooks.filter((b) => b.level === "beginner"),
-		intermediate: rawBooks.filter((b) => b.level === "intermediate"),
-		advanced: rawBooks.filter((b) => b.level === "advanced"),
-	};
-
-	const books: BookNode[] = [];
-	for (const [level, items] of Object.entries(groups) as [Level, RawBook[]][]) {
-		const r = RADII[level];
-		items.forEach((b, i) => {
-			const angle =
-				-Math.PI / 2 + ((2 * Math.PI) / Math.max(items.length, 1)) * i;
-			books.push({
-				...b,
-				x: Math.round(CENTER.x + r * Math.cos(angle)),
-				y: Math.round(CENTER.y + r * Math.sin(angle)),
-			});
-		});
-	}
-	return { books };
+// ─── SVG helpers ───────────────────────────────────────────────────────────
+function polarPath(startDeg: number, endDeg: number, r: number): string {
+	const s = startDeg * DEG;
+	const e = endDeg * DEG;
+	const x1 = Math.round(CX + r * Math.cos(s));
+	const y1 = Math.round(CY + r * Math.sin(s));
+	const x2 = Math.round(CX + r * Math.cos(e));
+	const y2 = Math.round(CY + r * Math.sin(e));
+	const large = endDeg - startDeg > 180 ? 1 : 0;
+	return `M ${CX} ${CY} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z`;
 }
 
+// ─── Layout ────────────────────────────────────────────────────────────────
 const clamp = (s: number) => Math.max(0.4, Math.min(4, s));
+
+function layoutBooks(rawBooks: RawBook[]): BookNode[] {
+	const books: BookNode[] = [];
+	for (const sector of SECTORS) {
+		for (const level of ["beginner", "intermediate", "advanced"] as Level[]) {
+			const items = rawBooks.filter(
+				(b) =>
+					b.level === level &&
+					(CATEGORY_MAP[b.title] ?? "strategy") === sector.id,
+			);
+			const r = RADII[level];
+			const halfArc = (SECTOR_ARC_DEG / 2) * DEG;
+			items.forEach((b, i) => {
+				const angle =
+					items.length === 1
+						? sector.centerDeg * DEG
+						: sector.centerDeg * DEG -
+							halfArc +
+							((SECTOR_ARC_DEG * DEG) / (items.length - 1)) * i;
+				books.push({
+					...b,
+					category: CATEGORY_MAP[b.title] ?? "strategy",
+					x: Math.round(CX + r * Math.cos(angle)),
+					y: Math.round(CY + r * Math.sin(angle)),
+				});
+			});
+		}
+	}
+	return books;
+}
 
 function amazonUrl(book: { title: string; isbn: string | null }): string {
 	if (book.isbn) return `https://www.amazon.co.jp/dp/${book.isbn}`;
 	return `https://www.amazon.co.jp/s?k=${encodeURIComponent(book.title)}`;
 }
 
-export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
+// ─── Component ─────────────────────────────────────────────────────────────
+export function BookGraph({ fieldName, fieldSlug, rawBooks }: Props) {
 	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const [hoveredSector, setHoveredSector] = useState<Category | null>(null);
 	const [view, setView] = useState({ s: 1, tx: 0, ty: 0 });
 	const [dragging, setDragging] = useState(false);
 	const stageRef = useRef<HTMLDivElement>(null);
@@ -113,11 +225,11 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 		y: number;
 		tx: number;
 		ty: number;
-		moved: boolean;
 	} | null>(null);
 
-	const { books } = layoutBooks(rawBooks);
+	const books = layoutBooks(rawBooks);
 	const bookById = Object.fromEntries(books.map((b) => [b.id, b]));
+	const activeSector = dragging ? null : hoveredSector;
 
 	const fitView = useCallback(() => {
 		const el = stageRef.current;
@@ -139,13 +251,12 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 		return () => window.removeEventListener("resize", fitView);
 	}, [fitView]);
 
-	const applyZoom = (factor: number, cx: number, cy: number) => {
+	const applyZoom = (factor: number, cx: number, cy: number) =>
 		setView((v) => {
 			const ns = clamp(v.s * factor);
 			const k = ns / v.s;
 			return { s: ns, tx: cx - (cx - v.tx) * k, ty: cy - (cy - v.ty) * k };
 		});
-	};
 
 	const onWheel = (e: React.WheelEvent) => {
 		e.preventDefault();
@@ -158,24 +269,19 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 	};
 
 	const onPanStart = (e: React.PointerEvent) => {
-		dragRef.current = {
-			x: e.clientX,
-			y: e.clientY,
-			tx: view.tx,
-			ty: view.ty,
-			moved: false,
-		};
+		dragRef.current = { x: e.clientX, y: e.clientY, tx: view.tx, ty: view.ty };
 		setDragging(true);
 		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 	};
 
 	const onPanMove = (e: React.PointerEvent) => {
-		if (!dragRef.current) return;
-		const dx = e.clientX - dragRef.current.x;
-		const dy = e.clientY - dragRef.current.y;
-		if (Math.abs(dx) + Math.abs(dy) > 3) dragRef.current.moved = true;
-		const { tx, ty } = dragRef.current;
-		setView((v) => ({ ...v, tx: tx + dx, ty: ty + dy }));
+		const drag = dragRef.current;
+		if (!drag) return;
+		setView((v) => ({
+			...v,
+			tx: drag.tx + e.clientX - drag.x,
+			ty: drag.ty + e.clientY - drag.y,
+		}));
 	};
 
 	const onPanEnd = () => {
@@ -191,21 +297,6 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 	};
 
 	const selected = selectedId ? bookById[selectedId] : null;
-
-	const edges = rawEdges
-		.map((e) => {
-			const p = bookById[e.fromId];
-			const q = bookById[e.toId];
-			if (!p || !q) return null;
-			const highlighted = selectedId === e.fromId || selectedId === e.toId;
-			return {
-				key: `${e.fromId}-${e.toId}`,
-				d: `M ${p.x} ${p.y} L ${q.x} ${q.y}`,
-				stroke: highlighted ? "#1E3A8A" : "#C4CBDA",
-				strokeWidth: highlighted ? 2.4 : 1.2,
-			};
-		})
-		.filter((e): e is NonNullable<typeof e> => e !== null);
 
 	return (
 		<div
@@ -307,7 +398,7 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 						minHeight: 600,
 						position: "relative",
 						background:
-							"radial-gradient(circle at 40% 40%, #FBFCFE 0%, #F5F7FB 100%)",
+							"radial-gradient(circle at 50% 50%, #FBFCFE 0%, #F5F7FB 100%)",
 						overflow: "hidden",
 						touchAction: "none",
 						cursor: dragging ? "grabbing" : "grab",
@@ -320,7 +411,7 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 							top: 18,
 							left: 18,
 							zIndex: 5,
-							background: "rgba(255,255,255,0.9)",
+							background: "rgba(255,255,255,0.92)",
 							border: "1px solid #E7EAF1",
 							borderRadius: 10,
 							padding: "12px 14px",
@@ -351,7 +442,7 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 								{
 									label: "中級",
 									size: 15,
-									fill: "rgba(30,58,138,0.16)",
+									fill: "rgba(30,58,138,0.14)",
 									border: "1.5px solid #1E3A8A",
 								},
 								{ label: "専門", size: 18, fill: "#1E3A8A", border: "none" },
@@ -382,7 +473,7 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 						))}
 					</div>
 
-					{/* Transformed world */}
+					{/* World */}
 					<div
 						style={{
 							position: "absolute",
@@ -395,47 +486,100 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 							willChange: "transform",
 						}}
 					>
-						{/* Edges + concentric circle guides */}
+						{/* SVG: sector backgrounds + guides + labels */}
 						<svg
-							aria-hidden="true"
+							role="img"
+							aria-label="経営学の領域マップ"
 							viewBox={`0 0 ${CANVAS_SIZE} ${CANVAS_SIZE}`}
 							style={{
 								position: "absolute",
 								inset: 0,
 								width: "100%",
 								height: "100%",
-								pointerEvents: "none",
 							}}
 						>
-							{/* Concentric circle guides */}
-							{(Object.entries(RADII) as [Level, number][]).map(([, r]) => (
+							{/* Sector hover areas + fills (mouse-only decoration) */}
+							{SECTORS.map((sec) => (
+								// biome-ignore lint/a11y/noStaticElementInteractions: SVG sector used as mouse hover zone only
+								<path
+									key={sec.id}
+									d={polarPath(sec.startDeg, sec.endDeg, RADII.advanced + 90)}
+									fill={activeSector === sec.id ? sec.hoverFill : sec.fill}
+									stroke="none"
+									style={{ cursor: "default", transition: "fill 0.35s ease" }}
+									onMouseEnter={() => setHoveredSector(sec.id)}
+									onMouseLeave={() => setHoveredSector(null)}
+								/>
+							))}
+
+							{/* Sector divider lines */}
+							{[-32, 88, 208].map((deg) => {
+								const r = RADII.advanced + 90;
+								const x = Math.round(CX + r * Math.cos(deg * DEG));
+								const y = Math.round(CY + r * Math.sin(deg * DEG));
+								return (
+									<line
+										key={deg}
+										x1={CX}
+										y1={CY}
+										x2={x}
+										y2={y}
+										stroke="#E0E4EE"
+										strokeWidth={1}
+										strokeDasharray="4 4"
+										style={{ pointerEvents: "none" }}
+									/>
+								);
+							})}
+
+							{/* Concentric ring guides */}
+							{(Object.values(RADII) as number[]).map((r) => (
 								<circle
 									key={r}
-									cx={CENTER.x}
-									cy={CENTER.y}
+									cx={CX}
+									cy={CY}
 									r={r}
 									fill="none"
 									stroke="#E4E7EE"
 									strokeWidth={1}
 									strokeDasharray="5 5"
+									style={{ pointerEvents: "none" }}
 								/>
 							))}
-							{/* Edges */}
-							{edges.map((e) => (
-								<path
-									key={e.key}
-									d={e.d}
-									fill="none"
-									stroke={e.stroke}
-									strokeWidth={e.strokeWidth}
-								/>
-							))}
+
+							{/* Sector labels */}
+							{SECTORS.map((sec) => {
+								const angle = sec.centerDeg * DEG;
+								const lx = Math.round(CX + SECTOR_LABEL_R * Math.cos(angle));
+								const ly = Math.round(CY + SECTOR_LABEL_R * Math.sin(angle));
+								return (
+									<text
+										key={sec.id}
+										x={lx}
+										y={ly}
+										textAnchor="middle"
+										dominantBaseline="middle"
+										fill={activeSector === sec.id ? sec.labelColor : "#9AA2B2"}
+										fontSize={13}
+										fontWeight={activeSector === sec.id ? 700 : 500}
+										fontFamily="'Noto Sans JP', sans-serif"
+										style={{
+											pointerEvents: "none",
+											transition: "fill 0.35s ease, font-weight 0.35s ease",
+										}}
+									>
+										{sec.label}
+									</text>
+								);
+							})}
 						</svg>
 
 						{/* Nodes */}
 						{books.map((b) => {
 							const ls = LEVEL_STYLE[b.level];
 							const sel = b.id === selectedId;
+							const inActive =
+								activeSector === null || b.category === activeSector;
 							return (
 								<button
 									key={b.id}
@@ -464,13 +608,15 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 										position: "absolute",
 										left: b.x,
 										top: b.y,
-										transform: "translate(-50%, -50%)",
+										transform: `translate(-50%, -50%)${inActive && activeSector ? " translateY(-8px) scale(1.08)" : ""}`,
+										opacity: inActive ? 1 : 0.25,
+										transition: "transform 0.38s ease, opacity 0.38s ease",
 										cursor: "pointer",
 										display: "flex",
 										flexDirection: "column",
 										alignItems: "center",
-										gap: 8,
-										zIndex: sel ? 20 : 10,
+										gap: 7,
+										zIndex: sel ? 20 : inActive ? 12 : 8,
 										background: "none",
 										border: "none",
 										padding: 0,
@@ -488,11 +634,11 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 											display: "flex",
 											alignItems: "center",
 											justifyContent: "center",
-											fontSize: ls.r < 35 ? 11 : 12,
+											fontSize: ls.r < 32 ? 10 : 11,
 											fontWeight: 700,
 											boxShadow: sel
 												? "0 0 0 5px rgba(30,58,138,0.16), 0 8px 22px rgba(30,58,138,0.22)"
-												: "0 4px 12px rgba(26,34,51,0.08)",
+												: "0 3px 10px rgba(26,34,51,0.08)",
 											transition: "box-shadow .2s",
 										}}
 									>
@@ -500,14 +646,14 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 									</div>
 									<div
 										style={{
-											fontSize: 12.5,
+											fontSize: 11.5,
 											fontWeight: sel ? 700 : 500,
 											color: "#1A2233",
-											background: "rgba(255,255,255,0.82)",
-											padding: "1px 6px",
-											borderRadius: 5,
+											background: "rgba(255,255,255,0.85)",
+											padding: "1px 5px",
+											borderRadius: 4,
 											whiteSpace: "nowrap",
-											maxWidth: 150,
+											maxWidth: 130,
 											overflow: "hidden",
 											textOverflow: "ellipsis",
 										}}
