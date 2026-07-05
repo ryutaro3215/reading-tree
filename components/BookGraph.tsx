@@ -26,15 +26,15 @@ type Props = {
 };
 
 // ─── Canvas & layout ───────────────────────────────────────────────────────
-const CANVAS_SIZE = 1300;
-const CX = 650;
-const CY = 650;
+const CANVAS_SIZE = 1800;
+const CX = 900;
+const CY = 900;
 const DEG = Math.PI / 180;
 
 const RADII: Record<Level, number> = {
-	beginner: 190,
-	intermediate: 385,
-	advanced: 560,
+	beginner: 270,
+	intermediate: 550,
+	advanced: 800,
 };
 
 // ─── Sectors (3 × 120°, with 4° gap between each) ────────────────────────
@@ -81,7 +81,7 @@ const SECTORS: {
 	},
 ];
 
-const SECTOR_LABEL_R = 630;
+const SECTOR_LABEL_R = 880;
 
 // ─── Book → category mapping (by title) ───────────────────────────────────
 const CATEGORY_MAP: Record<string, Category> = {
