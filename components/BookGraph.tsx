@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { capture } from "@/lib/posthog";
+import { createClient } from "@/lib/supabase/client";
 
 type Level = "beginner" | "intermediate" | "advanced";
 type Category = "strategy" | "marketing" | "finance";
@@ -246,6 +247,8 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks }: Props) {
 	const [hoveredBookId, setHoveredBookId] = useState<string | null>(null);
 	const [view, setView] = useState({ s: 1, tx: 0, ty: 0 });
 	const [dragging, setDragging] = useState(false);
+	const [userId, setUserId] = useState<string | null>(null);
+	const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
 	const stageRef = useRef<HTMLDivElement>(null);
 	const dragRef = useRef<{
 		x: number;
@@ -253,6 +256,44 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks }: Props) {
 		tx: number;
 		ty: number;
 	} | null>(null);
+	const supabase = createClient();
+
+	// ログイン状態とブックマーク取得
+	useEffect(() => {
+		supabase.auth.getUser().then(async ({ data }) => {
+			if (!data.user) return;
+			setUserId(data.user.id);
+			const { data: bms } = await supabase
+				.from("bookmarks")
+				.select("book_id")
+				.eq("user_id", data.user.id);
+			if (bms) setSavedIds(new Set(bms.map((b) => b.book_id as string)));
+		});
+	}, [supabase]);
+
+	async function toggleSave(bookId: string) {
+		if (!userId) {
+			window.location.href = "/login";
+			return;
+		}
+		if (savedIds.has(bookId)) {
+			await supabase
+				.from("bookmarks")
+				.delete()
+				.eq("user_id", userId)
+				.eq("book_id", bookId);
+			setSavedIds((prev) => {
+				const next = new Set(prev);
+				next.delete(bookId);
+				return next;
+			});
+		} else {
+			await supabase
+				.from("bookmarks")
+				.insert({ user_id: userId, book_id: bookId });
+			setSavedIds((prev) => new Set(prev).add(bookId));
+		}
+	}
 
 	const books = layoutBooks(rawBooks);
 	const bookById = Object.fromEntries(books.map((b) => [b.id, b]));
@@ -917,6 +958,30 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks }: Props) {
 							>
 								この本を購入する
 							</a>
+							<button
+								type="button"
+								onClick={() => toggleSave(selected.id)}
+								style={{
+									display: "block",
+									width: "100%",
+									textAlign: "center",
+									marginTop: 12,
+									background: savedIds.has(selected.id) ? "#F0F4FF" : "#FFFFFF",
+									border: savedIds.has(selected.id)
+										? "1px solid #1E3A8A"
+										: "1px solid #D7DCE7",
+									color: savedIds.has(selected.id) ? "#1E3A8A" : "#1A2233",
+									fontFamily: "inherit",
+									fontWeight: 600,
+									fontSize: 13.5,
+									padding: 12,
+									borderRadius: 10,
+									cursor: "pointer",
+									boxSizing: "border-box",
+								}}
+							>
+								{savedIds.has(selected.id) ? "✓ 保存済み" : "保存する"}
+							</button>
 							<a
 								href={`/fields/${fieldSlug}/propose`}
 								style={{

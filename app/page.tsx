@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { HeaderAuthButton } from "@/components/HeaderAuthButton";
 import { ComparisonTable } from "@/components/lp/ComparisonTable";
 import { DemoPreview } from "@/components/lp/DemoPreview";
 import { FooterCta } from "@/components/lp/FooterCta";
@@ -88,6 +89,7 @@ export default function HomePage() {
 						>
 							経営学のツリーを見る
 						</Link>
+						<HeaderAuthButton />
 					</div>
 				</div>
 			</header>

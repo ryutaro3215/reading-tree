@@ -1,13 +1,14 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/auth/callback"];
+// 認証が必要なパス
+const PROTECTED_PATHS = ["/mypage"];
 
 export async function middleware(request: NextRequest) {
 	const { pathname } = request.nextUrl;
 
-	// パブリックパスはそのまま通す
-	if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
+	// 保護パス以外はそのまま通す
+	if (!PROTECTED_PATHS.some((p) => pathname.startsWith(p))) {
 		return NextResponse.next();
 	}
 
