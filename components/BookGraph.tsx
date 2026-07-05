@@ -217,6 +217,7 @@ function amazonUrl(book: { title: string; isbn: string | null }): string {
 export function BookGraph({ fieldName, fieldSlug, rawBooks }: Props) {
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [hoveredSector, setHoveredSector] = useState<Category | null>(null);
+	const [hoveredBookId, setHoveredBookId] = useState<string | null>(null);
 	const [view, setView] = useState({ s: 1, tx: 0, ty: 0 });
 	const [dragging, setDragging] = useState(false);
 	const stageRef = useRef<HTMLDivElement>(null);
@@ -229,7 +230,12 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks }: Props) {
 
 	const books = layoutBooks(rawBooks);
 	const bookById = Object.fromEntries(books.map((b) => [b.id, b]));
-	const activeSector = dragging ? null : hoveredSector;
+	// ノードホバー中はそのカテゴリでセクターをアクティブに保つ
+	const activeSector = dragging
+		? null
+		: hoveredBookId
+			? (bookById[hoveredBookId]?.category ?? null)
+			: hoveredSector;
 
 	const fitView = useCallback(() => {
 		const el = stageRef.current;
@@ -578,14 +584,27 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks }: Props) {
 						{books.map((b) => {
 							const ls = LEVEL_STYLE[b.level];
 							const sel = b.id === selectedId;
+							const isNodeHovered = b.id === hoveredBookId;
 							const inActive =
 								activeSector === null || b.category === activeSector;
+
+							let nodeTransform = "translate(-50%, -50%)";
+							if (isNodeHovered) {
+								nodeTransform =
+									"translate(-50%, -50%) translateY(-14px) scale(1.18)";
+							} else if (inActive && activeSector) {
+								nodeTransform =
+									"translate(-50%, -50%) translateY(-8px) scale(1.08)";
+							}
+
 							return (
 								<button
 									key={b.id}
 									type="button"
 									aria-label={`${b.title} (${ls.label})`}
 									aria-pressed={sel}
+									onMouseEnter={() => setHoveredBookId(b.id)}
+									onMouseLeave={() => setHoveredBookId(null)}
 									onClick={() => {
 										setSelectedId(b.id);
 										capture("tree_node_click", {
@@ -608,15 +627,15 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks }: Props) {
 										position: "absolute",
 										left: b.x,
 										top: b.y,
-										transform: `translate(-50%, -50%)${inActive && activeSector ? " translateY(-8px) scale(1.08)" : ""}`,
+										transform: nodeTransform,
 										opacity: inActive ? 1 : 0.25,
-										transition: "transform 0.38s ease, opacity 0.38s ease",
+										transition: "transform 0.28s ease, opacity 0.38s ease",
 										cursor: "pointer",
 										display: "flex",
 										flexDirection: "column",
 										alignItems: "center",
 										gap: 7,
-										zIndex: sel ? 20 : inActive ? 12 : 8,
+										zIndex: sel ? 30 : isNodeHovered ? 25 : inActive ? 12 : 8,
 										background: "none",
 										border: "none",
 										padding: 0,
@@ -629,7 +648,7 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks }: Props) {
 											height: ls.r * 2,
 											borderRadius: "50%",
 											background: ls.fill,
-											border: ls.border,
+											border: isNodeHovered ? `2px solid #1E3A8A` : ls.border,
 											color: ls.textColor,
 											display: "flex",
 											alignItems: "center",
@@ -637,9 +656,11 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks }: Props) {
 											fontSize: ls.r < 32 ? 10 : 11,
 											fontWeight: 700,
 											boxShadow: sel
-												? "0 0 0 5px rgba(30,58,138,0.16), 0 8px 22px rgba(30,58,138,0.22)"
-												: "0 3px 10px rgba(26,34,51,0.08)",
-											transition: "box-shadow .2s",
+												? "0 0 0 5px rgba(30,58,138,0.18), 0 10px 26px rgba(30,58,138,0.28)"
+												: isNodeHovered
+													? "0 0 0 4px rgba(30,58,138,0.14), 0 10px 26px rgba(30,58,138,0.22)"
+													: "0 3px 10px rgba(26,34,51,0.08)",
+											transition: "box-shadow 0.2s, border 0.2s",
 										}}
 									>
 										{ls.label}
