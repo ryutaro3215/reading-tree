@@ -111,12 +111,21 @@ const CATEGORY_MAP: Record<string, Category> = {
 	アントレプレナーシップ: "strategy",
 	"イノベーションのジレンマ (増補改訂版)": "strategy",
 	知識創造の方法論: "strategy",
-	// マーケティング
-	"コトラー&ケラーのマーケティング・マネジメント 基本編": "marketing",
 	"経営管理 (新版)": "strategy",
 	"[新版] MBA経営戦略": "strategy",
 	企業評価の組織論的研究: "strategy",
 	経営の知的思考: "strategy",
+	// マーケティング
+	"コトラー&ケラーのマーケティング・マネジメント 基本編": "marketing",
+	"現代広告論 [第4版]": "marketing",
+	"売れるもマーケ 当たるもマーケ": "marketing",
+	"マーケティングをつかむ [第3版]": "marketing",
+	"人がうごく コンテンツのつくり方": "marketing",
+	大学4年間のマーケティングが10時間でざっと学べる: "marketing",
+	"1からのマーケティング": "marketing",
+	"マーケティング〈第2版〉": "marketing",
+	わかりやすいマーケティング戦略: "marketing",
+	"マーケティング戦略〔第6版〕": "marketing",
 };
 
 // ─── Visual styles ─────────────────────────────────────────────────────────
