@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { capture } from "@/lib/posthog";
 
 type Level = "beginner" | "intermediate" | "advanced";
 
@@ -430,8 +431,24 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 									type="button"
 									aria-label={`${b.title} (${ls.label})`}
 									aria-pressed={sel}
-									onClick={() => setSelectedId(b.id)}
-									onKeyDown={(e) => e.key === "Enter" && setSelectedId(b.id)}
+									onClick={() => {
+										setSelectedId(b.id);
+										capture("tree_node_click", {
+											book_id: b.id,
+											book_title: b.title,
+											level: b.level,
+										});
+									}}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											setSelectedId(b.id);
+											capture("tree_node_click", {
+												book_id: b.id,
+												book_title: b.title,
+												level: b.level,
+											});
+										}
+									}}
 									style={{
 										position: "absolute",
 										left: `${(b.x / CANVAS_W) * 100}%`,
