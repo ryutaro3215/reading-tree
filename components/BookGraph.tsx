@@ -88,8 +88,8 @@ function layoutBooks(rawBooks: RawBook[]): { books: BookNode[] } {
 				-Math.PI / 2 + ((2 * Math.PI) / Math.max(items.length, 1)) * i;
 			books.push({
 				...b,
-				x: CENTER.x + r * Math.cos(angle),
-				y: CENTER.y + r * Math.sin(angle),
+				x: Math.round(CENTER.x + r * Math.cos(angle)),
+				y: Math.round(CENTER.y + r * Math.sin(angle)),
 			});
 		});
 	}
