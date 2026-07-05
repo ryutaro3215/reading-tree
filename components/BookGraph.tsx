@@ -240,6 +240,11 @@ function amazonUrl(book: { title: string; isbn: string | null }): string {
 	return `https://www.amazon.co.jp/s?k=${encodeURIComponent(book.title)}`;
 }
 
+function coverUrl(isbn: string | null): string | null {
+	if (!isbn) return null;
+	return `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg`;
+}
+
 // ─── Component ─────────────────────────────────────────────────────────────
 export function BookGraph({ fieldName, fieldSlug, rawBooks }: Props) {
 	const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -867,6 +872,26 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks }: Props) {
 				>
 					{selected ? (
 						<div>
+							{/* 書影 */}
+							{coverUrl(selected.isbn) && (
+								// biome-ignore lint/a11y/useAltText: cover image, alt set below
+								<img
+									src={coverUrl(selected.isbn) as string}
+									alt={`${selected.title} の表紙`}
+									style={{
+										width: "100%",
+										maxHeight: 220,
+										objectFit: "contain",
+										borderRadius: 8,
+										marginBottom: 20,
+										background: "#F6F7FA",
+									}}
+									onError={(e) => {
+										(e.currentTarget as HTMLImageElement).style.display =
+											"none";
+									}}
+								/>
+							)}
 							<div
 								style={{
 									display: "inline-block",
@@ -883,10 +908,10 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks }: Props) {
 							</div>
 							<h2
 								style={{
-									fontSize: 22,
+									fontSize: 20,
 									fontWeight: 700,
 									letterSpacing: "-0.01em",
-									margin: "16px 0 22px",
+									margin: "12px 0 18px",
 									lineHeight: 1.4,
 								}}
 							>
@@ -1002,6 +1027,20 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks }: Props) {
 								}}
 							>
 								この分野に本を追加提案する
+							</a>
+							<a
+								href={`/books/${selected.id}`}
+								style={{
+									display: "block",
+									textAlign: "center",
+									textDecoration: "none",
+									marginTop: 8,
+									color: "#8A93A6",
+									fontSize: 12.5,
+									padding: "8px 0",
+								}}
+							>
+								この本の詳細ページを見る →
 							</a>
 						</div>
 					) : (
