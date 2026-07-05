@@ -32,3 +32,5 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+          NEXT_PUBLIC_POSTHOG_KEY: phc_placeholder
+          NEXT_PUBLIC_POSTHOG_HOST: https://app.posthog.com
