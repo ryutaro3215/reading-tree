@@ -99,7 +99,7 @@ const NODES = [
 		delay: "0.45s",
 	},
 	{
-		angleDeg: 30,
+		angleDeg: 65,
 		r: 138,
 		level: "advanced",
 		title: "確率思考の戦略論",
@@ -115,7 +115,7 @@ const NODES = [
 		delay: "0.5s",
 	},
 	{
-		angleDeg: 150,
+		angleDeg: 125,
 		r: 138,
 		level: "advanced",
 		title: "企業価値評価",
