@@ -24,13 +24,12 @@ type Props = {
 	rawEdges: RawEdge[];
 };
 
-const CANVAS_W = 920;
-const PADDING = 70;
-
-const LEVEL_X: Record<Level, number> = {
-	beginner: 140,
-	intermediate: 460,
-	advanced: 780,
+const CANVAS_SIZE = 1100;
+const CENTER = { x: 550, y: 550 };
+const RADII: Record<Level, number> = {
+	beginner: 160,
+	intermediate: 340,
+	advanced: 520,
 };
 
 const LEVEL_STYLE: Record<
@@ -74,30 +73,27 @@ const LEVEL_STYLE: Record<
 	},
 };
 
-function layoutBooks(rawBooks: RawBook[]): {
-	books: BookNode[];
-	canvasH: number;
-} {
+function layoutBooks(rawBooks: RawBook[]): { books: BookNode[] } {
 	const groups: Record<Level, RawBook[]> = {
 		beginner: rawBooks.filter((b) => b.level === "beginner"),
 		intermediate: rawBooks.filter((b) => b.level === "intermediate"),
 		advanced: rawBooks.filter((b) => b.level === "advanced"),
 	};
-	const maxCount = Math.max(...Object.values(groups).map((g) => g.length), 1);
-	const canvasH = Math.max(560, maxCount * 80 + PADDING * 2);
 
 	const books: BookNode[] = [];
 	for (const [level, items] of Object.entries(groups) as [Level, RawBook[]][]) {
-		const x = LEVEL_X[level];
+		const r = RADII[level];
 		items.forEach((b, i) => {
-			const y =
-				items.length === 1
-					? canvasH / 2
-					: PADDING + ((canvasH - PADDING * 2) / (items.length - 1)) * i;
-			books.push({ ...b, x, y });
+			const angle =
+				-Math.PI / 2 + ((2 * Math.PI) / Math.max(items.length, 1)) * i;
+			books.push({
+				...b,
+				x: CENTER.x + r * Math.cos(angle),
+				y: CENTER.y + r * Math.sin(angle),
+			});
 		});
 	}
-	return { books, canvasH };
+	return { books };
 }
 
 const clamp = (s: number) => Math.max(0.4, Math.min(4, s));
@@ -120,20 +116,22 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 		moved: boolean;
 	} | null>(null);
 
-	const { books, canvasH } = layoutBooks(rawBooks);
+	const { books } = layoutBooks(rawBooks);
 	const bookById = Object.fromEntries(books.map((b) => [b.id, b]));
 
 	const fitView = useCallback(() => {
 		const el = stageRef.current;
 		if (!el) return;
 		const r = el.getBoundingClientRect();
-		const s = clamp(Math.min(r.width / CANVAS_W, r.height / canvasH) * 0.92);
+		const s = clamp(
+			Math.min(r.width / CANVAS_SIZE, r.height / CANVAS_SIZE) * 0.92,
+		);
 		setView({
 			s,
-			tx: (r.width - CANVAS_W * s) / 2,
-			ty: (r.height - canvasH * s) / 2,
+			tx: (r.width - CANVAS_SIZE * s) / 2,
+			ty: (r.height - CANVAS_SIZE * s) / 2,
 		});
-	}, [canvasH]);
+	}, []);
 
 	useEffect(() => {
 		requestAnimationFrame(fitView);
@@ -199,13 +197,12 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 			const p = bookById[e.fromId];
 			const q = bookById[e.toId];
 			if (!p || !q) return null;
-			const mx = (p.x + q.x) / 2;
 			const highlighted = selectedId === e.fromId || selectedId === e.toId;
 			return {
 				key: `${e.fromId}-${e.toId}`,
-				d: `M ${p.x} ${p.y} C ${mx} ${p.y}, ${mx} ${q.y}, ${q.x} ${q.y}`,
+				d: `M ${p.x} ${p.y} L ${q.x} ${q.y}`,
 				stroke: highlighted ? "#1E3A8A" : "#C4CBDA",
-				strokeWidth: highlighted ? 2.4 : 1.5,
+				strokeWidth: highlighted ? 2.4 : 1.2,
 			};
 		})
 		.filter((e): e is NonNullable<typeof e> => e !== null);
@@ -391,17 +388,17 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 							position: "absolute",
 							left: 0,
 							top: 0,
-							width: CANVAS_W,
-							height: canvasH,
+							width: CANVAS_SIZE,
+							height: CANVAS_SIZE,
 							transformOrigin: "0 0",
 							transform: `translate(${view.tx}px, ${view.ty}px) scale(${view.s})`,
 							willChange: "transform",
 						}}
 					>
-						{/* Edges */}
+						{/* Edges + concentric circle guides */}
 						<svg
 							aria-hidden="true"
-							viewBox={`0 0 ${CANVAS_W} ${canvasH}`}
+							viewBox={`0 0 ${CANVAS_SIZE} ${CANVAS_SIZE}`}
 							style={{
 								position: "absolute",
 								inset: 0,
@@ -410,6 +407,20 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 								pointerEvents: "none",
 							}}
 						>
+							{/* Concentric circle guides */}
+							{(Object.entries(RADII) as [Level, number][]).map(([, r]) => (
+								<circle
+									key={r}
+									cx={CENTER.x}
+									cy={CENTER.y}
+									r={r}
+									fill="none"
+									stroke="#E4E7EE"
+									strokeWidth={1}
+									strokeDasharray="5 5"
+								/>
+							))}
+							{/* Edges */}
 							{edges.map((e) => (
 								<path
 									key={e.key}
@@ -451,8 +462,8 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 									}}
 									style={{
 										position: "absolute",
-										left: `${(b.x / CANVAS_W) * 100}%`,
-										top: `${(b.y / canvasH) * 100}%`,
+										left: b.x,
+										top: b.y,
 										transform: "translate(-50%, -50%)",
 										cursor: "pointer",
 										display: "flex",
