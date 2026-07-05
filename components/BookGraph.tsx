@@ -115,7 +115,7 @@ const CATEGORY_MAP: Record<string, Category> = {
 	知識創造の方法論: "marketing",
 	// 財務・ファイナンス
 	"経営管理 (新版)": "finance",
-	"[新版] MBA経営戦略": "finance",
+	"[新版] MBA経営戦略": "strategy",
 	"リサーチ・デザイン": "finance",
 	企業評価の組織論的研究: "finance",
 	経営の知的思考: "finance",

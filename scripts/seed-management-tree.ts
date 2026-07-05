@@ -28,6 +28,7 @@ const BEGINNER: BookRef[] = [
 	{ title: "経営管理 (新版)" },
 	{ title: "世界は経営でできている" },
 	{ title: "逆・タイムマシン経営論" },
+	{ title: "[新版] MBA経営戦略" },
 ];
 
 const INTERMEDIATE: BookRef[] = [
@@ -44,7 +45,6 @@ const INTERMEDIATE: BookRef[] = [
 	{ title: "イノベーションのジレンマ (増補改訂版)" },
 	{ title: "アントレプレナーシップ", author: "清水" }, // 清水 洋版
 	{ title: "コトラー&ケラーのマーケティング・マネジメント 基本編" },
-	{ title: "[新版] MBA経営戦略" },
 ];
 
 const ADVANCED: BookRef[] = [
