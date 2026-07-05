@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { capture } from "@/lib/posthog";
 
 export function FooterCta() {
@@ -19,7 +20,7 @@ export function FooterCta() {
 					>
 						今日から、経営学の迷子をやめる
 					</h2>
-					<a
+					<Link
 						href="/fields/keieigaku"
 						onClick={() => capture("cta_click_footer")}
 						style={{
@@ -35,7 +36,7 @@ export function FooterCta() {
 						}}
 					>
 						経営学のツリーを見る
-					</a>
+					</Link>
 				</div>
 			</section>
 

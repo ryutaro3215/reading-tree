@@ -55,9 +55,9 @@ const SECTORS: {
 		centerDeg: -90,
 		startDeg: -148,
 		endDeg: -32,
-		fill: "rgba(30,58,138,0.07)",
-		hoverFill: "rgba(30,58,138,0.14)",
-		labelColor: "#1E3A8A",
+		fill: "rgba(59,130,246,0.10)",
+		hoverFill: "rgba(59,130,246,0.20)",
+		labelColor: "#2563EB",
 	},
 	{
 		id: "marketing",
@@ -65,9 +65,9 @@ const SECTORS: {
 		centerDeg: 30,
 		startDeg: -28,
 		endDeg: 88,
-		fill: "rgba(6,95,70,0.07)",
-		hoverFill: "rgba(6,95,70,0.14)",
-		labelColor: "#065F46",
+		fill: "rgba(16,185,129,0.10)",
+		hoverFill: "rgba(16,185,129,0.20)",
+		labelColor: "#059669",
 	},
 	{
 		id: "finance",
@@ -75,9 +75,9 @@ const SECTORS: {
 		centerDeg: 150,
 		startDeg: 92,
 		endDeg: 208,
-		fill: "rgba(120,53,15,0.07)",
-		hoverFill: "rgba(120,53,15,0.14)",
-		labelColor: "#78350F",
+		fill: "rgba(245,158,11,0.10)",
+		hoverFill: "rgba(245,158,11,0.20)",
+		labelColor: "#D97706",
 	},
 ];
 
