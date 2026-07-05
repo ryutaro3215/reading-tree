@@ -55,8 +55,8 @@ const SECTORS: {
 		centerDeg: -90,
 		startDeg: -148,
 		endDeg: -32,
-		fill: "rgba(30,58,138,0.03)",
-		hoverFill: "rgba(30,58,138,0.07)",
+		fill: "rgba(30,58,138,0.07)",
+		hoverFill: "rgba(30,58,138,0.14)",
 		labelColor: "#1E3A8A",
 	},
 	{
@@ -65,8 +65,8 @@ const SECTORS: {
 		centerDeg: 30,
 		startDeg: -28,
 		endDeg: 88,
-		fill: "rgba(6,95,70,0.03)",
-		hoverFill: "rgba(6,95,70,0.07)",
+		fill: "rgba(6,95,70,0.07)",
+		hoverFill: "rgba(6,95,70,0.14)",
 		labelColor: "#065F46",
 	},
 	{
@@ -75,8 +75,8 @@ const SECTORS: {
 		centerDeg: 150,
 		startDeg: 92,
 		endDeg: 208,
-		fill: "rgba(120,53,15,0.03)",
-		hoverFill: "rgba(120,53,15,0.07)",
+		fill: "rgba(120,53,15,0.07)",
+		hoverFill: "rgba(120,53,15,0.14)",
 		labelColor: "#78350F",
 	},
 ];
