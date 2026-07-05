@@ -108,17 +108,17 @@ const CATEGORY_MAP: Record<string, Category> = {
 	"企業戦略論[下]全社戦略編:競争優位の構築と持続": "strategy",
 	経営戦略の思考法: "strategy",
 	組織の不条理: "strategy",
+	アントレプレナーシップ: "strategy",
+	"イノベーションのジレンマ (増補改訂版)": "strategy",
+	知識創造の方法論: "strategy",
 	// マーケティング
 	"コトラー&ケラーのマーケティング・マネジメント 基本編": "marketing",
-	アントレプレナーシップ: "marketing",
-	"イノベーションのジレンマ (増補改訂版)": "marketing",
-	知識創造の方法論: "marketing",
+	"経営管理 (新版)": "strategy",
 	// 財務・ファイナンス
-	"経営管理 (新版)": "finance",
 	"[新版] MBA経営戦略": "strategy",
 	"リサーチ・デザイン": "finance",
-	企業評価の組織論的研究: "finance",
-	経営の知的思考: "finance",
+	企業評価の組織論的研究: "strategy",
+	経営の知的思考: "strategy",
 };
 
 // ─── Visual styles ─────────────────────────────────────────────────────────
