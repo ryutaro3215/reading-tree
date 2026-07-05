@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { capture } from "@/lib/posthog";
 
 type Level = "beginner" | "intermediate" | "advanced";
+type Category = "strategy" | "marketing" | "finance";
 
 type RawBook = {
 	id: string;
@@ -13,7 +14,7 @@ type RawBook = {
 	level: Level;
 };
 
-type BookNode = RawBook & { x: number; y: number };
+type BookNode = RawBook & { x: number; y: number; category: Category };
 
 type RawEdge = { fromId: string; toId: string };
 
@@ -24,15 +25,129 @@ type Props = {
 	rawEdges: RawEdge[];
 };
 
-const CANVAS_W = 920;
-const PADDING = 70;
+// ─── Canvas & layout ───────────────────────────────────────────────────────
+const CANVAS_SIZE = 1800;
+const CX = 900;
+const CY = 900;
+const DEG = Math.PI / 180;
 
-const LEVEL_X: Record<Level, number> = {
-	beginner: 140,
-	intermediate: 460,
-	advanced: 780,
+const RADII: Record<Level, number> = {
+	beginner: 270,
+	intermediate: 550,
+	advanced: 800,
 };
 
+// ─── Sectors (3 × 120°, with 4° gap between each) ────────────────────────
+const SECTOR_ARC_DEG = 116; // usable arc per sector
+const SECTORS: {
+	id: Category;
+	label: string;
+	centerDeg: number;
+	startDeg: number;
+	endDeg: number;
+	fill: string;
+	hoverFill: string;
+	labelColor: string;
+}[] = [
+	{
+		id: "strategy",
+		label: "経営戦略・組織",
+		centerDeg: -90,
+		startDeg: -148,
+		endDeg: -32,
+		fill: "rgba(59,130,246,0.10)",
+		hoverFill: "rgba(59,130,246,0.20)",
+		labelColor: "#2563EB",
+	},
+	{
+		id: "marketing",
+		label: "マーケティング",
+		centerDeg: 30,
+		startDeg: -28,
+		endDeg: 88,
+		fill: "rgba(16,185,129,0.10)",
+		hoverFill: "rgba(16,185,129,0.20)",
+		labelColor: "#059669",
+	},
+	{
+		id: "finance",
+		label: "財務・ファイナンス",
+		centerDeg: 150,
+		startDeg: 92,
+		endDeg: 208,
+		fill: "rgba(245,158,11,0.10)",
+		hoverFill: "rgba(245,158,11,0.20)",
+		labelColor: "#D97706",
+	},
+];
+
+const SECTOR_LABEL_R = 880;
+
+// ─── Book → category mapping (by title) ───────────────────────────────────
+const CATEGORY_MAP: Record<string, Category> = {
+	// 経営戦略・組織
+	経営学入門: "strategy",
+	経営学とはなにか: "strategy",
+	ゼミナール経営学入門: "strategy",
+	領域を超える経営学: "strategy",
+	世界は経営でできている: "strategy",
+	"逆・タイムマシン経営論": "strategy",
+	世界標準の経営理論: "strategy",
+	経営戦略入門: "strategy",
+	"経営戦略の論理 (第4版)": "strategy",
+	競争戦略論I: "strategy",
+	ストーリーとしての競争戦略: "strategy",
+	"組織論 (補訂版)": "strategy",
+	"組織行動のマネジメント (新版)": "strategy",
+	"知識創造企業 (新装版)": "strategy",
+	失敗の本質: "strategy",
+	両利きの経営: "strategy",
+	企業戦略論: "strategy",
+	"企業戦略論[上]基本編:競争優位の構築と持続": "strategy",
+	"企業戦略論[中]事業戦略編:競争優位の構築と持続": "strategy",
+	"企業戦略論[下]全社戦略編:競争優位の構築と持続": "strategy",
+	経営戦略の思考法: "strategy",
+	組織の不条理: "strategy",
+	アントレプレナーシップ: "strategy",
+	"イノベーションのジレンマ (増補改訂版)": "strategy",
+	知識創造の方法論: "strategy",
+	"経営管理 (新版)": "strategy",
+	"[新版] MBA経営戦略": "strategy",
+	企業評価の組織論的研究: "strategy",
+	経営の知的思考: "strategy",
+	// マーケティング
+	"コトラー&ケラーのマーケティング・マネジメント 基本編": "marketing",
+	"現代広告論 [第4版]": "marketing",
+	"売れるもマーケ 当たるもマーケ": "marketing",
+	"マーケティングをつかむ [第3版]": "marketing",
+	"人がうごく コンテンツのつくり方": "marketing",
+	大学4年間のマーケティングが10時間でざっと学べる: "marketing",
+	"1からのマーケティング": "marketing",
+	"マーケティング〈第2版〉": "marketing",
+	わかりやすいマーケティング戦略: "marketing",
+	"マーケティング戦略〔第6版〕": "marketing",
+	// 財務・ファイナンス
+	よくわかるファイナンス: "finance",
+	ざっくり分かるファイナンス: "finance",
+	財務3表一体理解法: "finance",
+	"実況！ビジネス力養成講義 ファイナンス": "finance",
+	"この１冊ですべてわかる 財務会計の基本": "finance",
+	"新版 会計の基本": "finance",
+	管理会計の基本: "finance",
+	道具としてのファイナンス: "finance",
+	"コーポレートファイナンス 入門編 [第2版]": "finance",
+	"新・現代会計入門 第5版": "finance",
+	"コーポレートファイナンス 戦略と実践": "finance",
+	"ゼミナール コーポレートファイナンス": "finance",
+	基本から本格的に学ぶ人のためのファイナンス入門: "finance",
+	"財務会計・入門〔第19版〕": "finance",
+	財務会計の思考法: "finance",
+	"財務会計講義 (第25版)": "finance",
+	"コーポレート・ファイナンス 第10版（上）": "finance",
+	"企業価値評価 第7版（上）": "finance",
+};
+
+// ─── Visual styles ─────────────────────────────────────────────────────────
 const LEVEL_STYLE: Record<
 	Level,
 	{
@@ -46,7 +161,7 @@ const LEVEL_STYLE: Record<
 	}
 > = {
 	beginner: {
-		r: 30,
+		r: 28,
 		fill: "#FFFFFF",
 		border: "1.5px solid #1E3A8A",
 		textColor: "#1A2233",
@@ -55,8 +170,8 @@ const LEVEL_STYLE: Record<
 		badgeColor: "#1E3A8A",
 	},
 	intermediate: {
-		r: 38,
-		fill: "rgba(30,58,138,0.16)",
+		r: 36,
+		fill: "rgba(30,58,138,0.14)",
 		border: "1.5px solid #1E3A8A",
 		textColor: "#1A2233",
 		label: "中級",
@@ -64,7 +179,7 @@ const LEVEL_STYLE: Record<
 		badgeColor: "#1E3A8A",
 	},
 	advanced: {
-		r: 48,
+		r: 46,
 		fill: "#1E3A8A",
 		border: "1.5px solid #1E3A8A",
 		textColor: "#FFFFFF",
@@ -74,41 +189,61 @@ const LEVEL_STYLE: Record<
 	},
 };
 
-function layoutBooks(rawBooks: RawBook[]): {
-	books: BookNode[];
-	canvasH: number;
-} {
-	const groups: Record<Level, RawBook[]> = {
-		beginner: rawBooks.filter((b) => b.level === "beginner"),
-		intermediate: rawBooks.filter((b) => b.level === "intermediate"),
-		advanced: rawBooks.filter((b) => b.level === "advanced"),
-	};
-	const maxCount = Math.max(...Object.values(groups).map((g) => g.length), 1);
-	const canvasH = Math.max(560, maxCount * 80 + PADDING * 2);
-
-	const books: BookNode[] = [];
-	for (const [level, items] of Object.entries(groups) as [Level, RawBook[]][]) {
-		const x = LEVEL_X[level];
-		items.forEach((b, i) => {
-			const y =
-				items.length === 1
-					? canvasH / 2
-					: PADDING + ((canvasH - PADDING * 2) / (items.length - 1)) * i;
-			books.push({ ...b, x, y });
-		});
-	}
-	return { books, canvasH };
+// ─── SVG helpers ───────────────────────────────────────────────────────────
+function polarPath(startDeg: number, endDeg: number, r: number): string {
+	const s = startDeg * DEG;
+	const e = endDeg * DEG;
+	const x1 = Math.round(CX + r * Math.cos(s));
+	const y1 = Math.round(CY + r * Math.sin(s));
+	const x2 = Math.round(CX + r * Math.cos(e));
+	const y2 = Math.round(CY + r * Math.sin(e));
+	const large = endDeg - startDeg > 180 ? 1 : 0;
+	return `M ${CX} ${CY} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z`;
 }
 
+// ─── Layout ────────────────────────────────────────────────────────────────
 const clamp = (s: number) => Math.max(0.4, Math.min(4, s));
+
+function layoutBooks(rawBooks: RawBook[]): BookNode[] {
+	const books: BookNode[] = [];
+	for (const sector of SECTORS) {
+		for (const level of ["beginner", "intermediate", "advanced"] as Level[]) {
+			const items = rawBooks.filter(
+				(b) =>
+					b.level === level &&
+					(CATEGORY_MAP[b.title] ?? "strategy") === sector.id,
+			);
+			const r = RADII[level];
+			const halfArc = (SECTOR_ARC_DEG / 2) * DEG;
+			items.forEach((b, i) => {
+				const angle =
+					items.length === 1
+						? sector.centerDeg * DEG
+						: sector.centerDeg * DEG -
+							halfArc +
+							((SECTOR_ARC_DEG * DEG) / (items.length - 1)) * i;
+				books.push({
+					...b,
+					category: CATEGORY_MAP[b.title] ?? "strategy",
+					x: Math.round(CX + r * Math.cos(angle)),
+					y: Math.round(CY + r * Math.sin(angle)),
+				});
+			});
+		}
+	}
+	return books;
+}
 
 function amazonUrl(book: { title: string; isbn: string | null }): string {
 	if (book.isbn) return `https://www.amazon.co.jp/dp/${book.isbn}`;
 	return `https://www.amazon.co.jp/s?k=${encodeURIComponent(book.title)}`;
 }
 
-export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
+// ─── Component ─────────────────────────────────────────────────────────────
+export function BookGraph({ fieldName, fieldSlug, rawBooks }: Props) {
 	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const [hoveredSector, setHoveredSector] = useState<Category | null>(null);
+	const [hoveredBookId, setHoveredBookId] = useState<string | null>(null);
 	const [view, setView] = useState({ s: 1, tx: 0, ty: 0 });
 	const [dragging, setDragging] = useState(false);
 	const stageRef = useRef<HTMLDivElement>(null);
@@ -117,23 +252,30 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 		y: number;
 		tx: number;
 		ty: number;
-		moved: boolean;
 	} | null>(null);
 
-	const { books, canvasH } = layoutBooks(rawBooks);
+	const books = layoutBooks(rawBooks);
 	const bookById = Object.fromEntries(books.map((b) => [b.id, b]));
+	// ノードホバー中はそのカテゴリでセクターをアクティブに保つ
+	const activeSector = dragging
+		? null
+		: hoveredBookId
+			? (bookById[hoveredBookId]?.category ?? null)
+			: hoveredSector;
 
 	const fitView = useCallback(() => {
 		const el = stageRef.current;
 		if (!el) return;
 		const r = el.getBoundingClientRect();
-		const s = clamp(Math.min(r.width / CANVAS_W, r.height / canvasH) * 0.92);
+		const s = clamp(
+			Math.min(r.width / CANVAS_SIZE, r.height / CANVAS_SIZE) * 0.92,
+		);
 		setView({
 			s,
-			tx: (r.width - CANVAS_W * s) / 2,
-			ty: (r.height - canvasH * s) / 2,
+			tx: (r.width - CANVAS_SIZE * s) / 2,
+			ty: (r.height - CANVAS_SIZE * s) / 2,
 		});
-	}, [canvasH]);
+	}, []);
 
 	useEffect(() => {
 		requestAnimationFrame(fitView);
@@ -141,13 +283,12 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 		return () => window.removeEventListener("resize", fitView);
 	}, [fitView]);
 
-	const applyZoom = (factor: number, cx: number, cy: number) => {
+	const applyZoom = (factor: number, cx: number, cy: number) =>
 		setView((v) => {
 			const ns = clamp(v.s * factor);
 			const k = ns / v.s;
 			return { s: ns, tx: cx - (cx - v.tx) * k, ty: cy - (cy - v.ty) * k };
 		});
-	};
 
 	const onWheel = (e: React.WheelEvent) => {
 		e.preventDefault();
@@ -160,24 +301,19 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 	};
 
 	const onPanStart = (e: React.PointerEvent) => {
-		dragRef.current = {
-			x: e.clientX,
-			y: e.clientY,
-			tx: view.tx,
-			ty: view.ty,
-			moved: false,
-		};
+		dragRef.current = { x: e.clientX, y: e.clientY, tx: view.tx, ty: view.ty };
 		setDragging(true);
 		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 	};
 
 	const onPanMove = (e: React.PointerEvent) => {
-		if (!dragRef.current) return;
-		const dx = e.clientX - dragRef.current.x;
-		const dy = e.clientY - dragRef.current.y;
-		if (Math.abs(dx) + Math.abs(dy) > 3) dragRef.current.moved = true;
-		const { tx, ty } = dragRef.current;
-		setView((v) => ({ ...v, tx: tx + dx, ty: ty + dy }));
+		const drag = dragRef.current;
+		if (!drag) return;
+		setView((v) => ({
+			...v,
+			tx: drag.tx + e.clientX - drag.x,
+			ty: drag.ty + e.clientY - drag.y,
+		}));
 	};
 
 	const onPanEnd = () => {
@@ -193,22 +329,6 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 	};
 
 	const selected = selectedId ? bookById[selectedId] : null;
-
-	const edges = rawEdges
-		.map((e) => {
-			const p = bookById[e.fromId];
-			const q = bookById[e.toId];
-			if (!p || !q) return null;
-			const mx = (p.x + q.x) / 2;
-			const highlighted = selectedId === e.fromId || selectedId === e.toId;
-			return {
-				key: `${e.fromId}-${e.toId}`,
-				d: `M ${p.x} ${p.y} C ${mx} ${p.y}, ${mx} ${q.y}, ${q.x} ${q.y}`,
-				stroke: highlighted ? "#1E3A8A" : "#C4CBDA",
-				strokeWidth: highlighted ? 2.4 : 1.5,
-			};
-		})
-		.filter((e): e is NonNullable<typeof e> => e !== null);
 
 	return (
 		<div
@@ -310,7 +430,7 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 						minHeight: 600,
 						position: "relative",
 						background:
-							"radial-gradient(circle at 40% 40%, #FBFCFE 0%, #F5F7FB 100%)",
+							"radial-gradient(circle at 50% 50%, #FBFCFE 0%, #F5F7FB 100%)",
 						overflow: "hidden",
 						touchAction: "none",
 						cursor: dragging ? "grabbing" : "grab",
@@ -323,7 +443,7 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 							top: 18,
 							left: 18,
 							zIndex: 5,
-							background: "rgba(255,255,255,0.9)",
+							background: "rgba(255,255,255,0.92)",
 							border: "1px solid #E7EAF1",
 							borderRadius: 10,
 							padding: "12px 14px",
@@ -354,7 +474,7 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 								{
 									label: "中級",
 									size: 15,
-									fill: "rgba(30,58,138,0.16)",
+									fill: "rgba(30,58,138,0.14)",
 									border: "1.5px solid #1E3A8A",
 								},
 								{ label: "専門", size: 18, fill: "#1E3A8A", border: "none" },
@@ -385,52 +505,133 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 						))}
 					</div>
 
-					{/* Transformed world */}
+					{/* World */}
 					<div
 						style={{
 							position: "absolute",
 							left: 0,
 							top: 0,
-							width: CANVAS_W,
-							height: canvasH,
+							width: CANVAS_SIZE,
+							height: CANVAS_SIZE,
 							transformOrigin: "0 0",
 							transform: `translate(${view.tx}px, ${view.ty}px) scale(${view.s})`,
 							willChange: "transform",
 						}}
 					>
-						{/* Edges */}
+						{/* SVG: sector backgrounds + guides + labels */}
 						<svg
-							aria-hidden="true"
-							viewBox={`0 0 ${CANVAS_W} ${canvasH}`}
+							role="img"
+							aria-label="経営学の領域マップ"
+							viewBox={`0 0 ${CANVAS_SIZE} ${CANVAS_SIZE}`}
 							style={{
 								position: "absolute",
 								inset: 0,
 								width: "100%",
 								height: "100%",
-								pointerEvents: "none",
 							}}
 						>
-							{edges.map((e) => (
+							{/* Sector hover areas + fills (mouse-only decoration) */}
+							{SECTORS.map((sec) => (
+								// biome-ignore lint/a11y/noStaticElementInteractions: SVG sector used as mouse hover zone only
 								<path
-									key={e.key}
-									d={e.d}
-									fill="none"
-									stroke={e.stroke}
-									strokeWidth={e.strokeWidth}
+									key={sec.id}
+									d={polarPath(sec.startDeg, sec.endDeg, RADII.advanced + 90)}
+									fill={activeSector === sec.id ? sec.hoverFill : sec.fill}
+									stroke="none"
+									style={{ cursor: "default", transition: "fill 0.35s ease" }}
+									onMouseEnter={() => setHoveredSector(sec.id)}
+									onMouseLeave={() => setHoveredSector(null)}
 								/>
 							))}
+
+							{/* Sector divider lines */}
+							{[-32, 88, 208].map((deg) => {
+								const r = RADII.advanced + 90;
+								const x = Math.round(CX + r * Math.cos(deg * DEG));
+								const y = Math.round(CY + r * Math.sin(deg * DEG));
+								return (
+									<line
+										key={deg}
+										x1={CX}
+										y1={CY}
+										x2={x}
+										y2={y}
+										stroke="#E0E4EE"
+										strokeWidth={1}
+										strokeDasharray="4 4"
+										style={{ pointerEvents: "none" }}
+									/>
+								);
+							})}
+
+							{/* Concentric ring guides */}
+							{(Object.values(RADII) as number[]).map((r) => (
+								<circle
+									key={r}
+									cx={CX}
+									cy={CY}
+									r={r}
+									fill="none"
+									stroke="#E4E7EE"
+									strokeWidth={1}
+									strokeDasharray="5 5"
+									style={{ pointerEvents: "none" }}
+								/>
+							))}
+
+							{/* Sector labels */}
+							{SECTORS.map((sec) => {
+								const angle = sec.centerDeg * DEG;
+								const lx = Math.round(CX + SECTOR_LABEL_R * Math.cos(angle));
+								const ly = Math.round(CY + SECTOR_LABEL_R * Math.sin(angle));
+								return (
+									<text
+										key={sec.id}
+										x={lx}
+										y={ly}
+										textAnchor="middle"
+										dominantBaseline="middle"
+										fill={activeSector === sec.id ? sec.labelColor : "#9AA2B2"}
+										fontSize={13}
+										fontWeight={activeSector === sec.id ? 700 : 500}
+										fontFamily="'Noto Sans JP', sans-serif"
+										style={{
+											pointerEvents: "none",
+											transition: "fill 0.35s ease, font-weight 0.35s ease",
+										}}
+									>
+										{sec.label}
+									</text>
+								);
+							})}
 						</svg>
 
 						{/* Nodes */}
 						{books.map((b) => {
 							const ls = LEVEL_STYLE[b.level];
 							const sel = b.id === selectedId;
+							const isNodeHovered = b.id === hoveredBookId;
+							const inActive =
+								activeSector === null || b.category === activeSector;
+
+							let nodeTransform = "translate(-50%, -50%)";
+							if (isNodeHovered) {
+								nodeTransform =
+									"translate(-50%, -50%) translateY(-14px) scale(1.18)";
+							} else if (inActive && activeSector) {
+								nodeTransform =
+									"translate(-50%, -50%) translateY(-8px) scale(1.08)";
+							}
+
 							return (
 								<button
 									key={b.id}
 									type="button"
 									aria-label={`${b.title} (${ls.label})`}
 									aria-pressed={sel}
+									onPointerDown={(e) => e.stopPropagation()}
+									onMouseEnter={() => setHoveredBookId(b.id)}
+									onMouseLeave={() => setHoveredBookId(null)}
 									onClick={() => {
 										setSelectedId(b.id);
 										capture("tree_node_click", {
@@ -451,15 +652,17 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 									}}
 									style={{
 										position: "absolute",
-										left: `${(b.x / CANVAS_W) * 100}%`,
-										top: `${(b.y / canvasH) * 100}%`,
-										transform: "translate(-50%, -50%)",
+										left: b.x,
+										top: b.y,
+										transform: nodeTransform,
+										opacity: inActive ? 1 : 0.25,
+										transition: "transform 0.28s ease, opacity 0.38s ease",
 										cursor: "pointer",
 										display: "flex",
 										flexDirection: "column",
 										alignItems: "center",
-										gap: 8,
-										zIndex: sel ? 20 : 10,
+										gap: 7,
+										zIndex: sel ? 30 : isNodeHovered ? 25 : inActive ? 12 : 8,
 										background: "none",
 										border: "none",
 										padding: 0,
@@ -472,31 +675,33 @@ export function BookGraph({ fieldName, fieldSlug, rawBooks, rawEdges }: Props) {
 											height: ls.r * 2,
 											borderRadius: "50%",
 											background: ls.fill,
-											border: ls.border,
+											border: isNodeHovered ? `2px solid #1E3A8A` : ls.border,
 											color: ls.textColor,
 											display: "flex",
 											alignItems: "center",
 											justifyContent: "center",
-											fontSize: ls.r < 35 ? 11 : 12,
+											fontSize: ls.r < 32 ? 10 : 11,
 											fontWeight: 700,
 											boxShadow: sel
-												? "0 0 0 5px rgba(30,58,138,0.16), 0 8px 22px rgba(30,58,138,0.22)"
-												: "0 4px 12px rgba(26,34,51,0.08)",
-											transition: "box-shadow .2s",
+												? "0 0 0 5px rgba(30,58,138,0.18), 0 10px 26px rgba(30,58,138,0.28)"
+												: isNodeHovered
+													? "0 0 0 4px rgba(30,58,138,0.14), 0 10px 26px rgba(30,58,138,0.22)"
+													: "0 3px 10px rgba(26,34,51,0.08)",
+											transition: "box-shadow 0.2s, border 0.2s",
 										}}
 									>
 										{ls.label}
 									</div>
 									<div
 										style={{
-											fontSize: 12.5,
+											fontSize: 11.5,
 											fontWeight: sel ? 700 : 500,
 											color: "#1A2233",
-											background: "rgba(255,255,255,0.82)",
-											padding: "1px 6px",
-											borderRadius: 5,
+											background: "rgba(255,255,255,0.85)",
+											padding: "1px 5px",
+											borderRadius: 4,
 											whiteSpace: "nowrap",
-											maxWidth: 150,
+											maxWidth: 130,
 											overflow: "hidden",
 											textOverflow: "ellipsis",
 										}}

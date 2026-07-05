@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { capture } from "@/lib/posthog";
 
 export function Hero() {
@@ -59,8 +60,8 @@ export function Hero() {
 						animation: "rt-rise 0.7s ease both 0.18s",
 					}}
 				>
-					<a
-						href="/fields/keieigaku"
+					<Link
+						href="/fields/business-administration"
 						onClick={() => capture("cta_click_hero")}
 						style={{
 							textDecoration: "none",
@@ -75,7 +76,7 @@ export function Hero() {
 						}}
 					>
 						経営学のツリーを見る
-					</a>
+					</Link>
 					<span style={{ fontSize: 13.5, color: "#5B6577" }}>
 						完全無料。運営費はAmazon/楽天の紹介リンクでまかなっています
 					</span>

@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { BookGraph } from "@/components/BookGraph";
 import { createClient } from "@/lib/supabase/server";
 
+export const revalidate = 3600;
+
 type Level = "beginner" | "intermediate" | "advanced";
 
 type FieldBook = {

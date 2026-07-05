@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ComparisonTable } from "@/components/lp/ComparisonTable";
 import { DemoPreview } from "@/components/lp/DemoPreview";
 import { FooterCta } from "@/components/lp/FooterCta";
@@ -72,8 +73,8 @@ export default function HomePage() {
 						<span style={{ fontSize: 12.5, color: "#5B6577" }}>
 							完全無料。運営費はAmazon/楽天の紹介リンクでまかなっています
 						</span>
-						<a
-							href="/fields/keieigaku"
+						<Link
+							href="/fields/business-administration"
 							style={{
 								textDecoration: "none",
 								background: "#1E3A8A",
@@ -86,7 +87,7 @@ export default function HomePage() {
 							}}
 						>
 							経営学のツリーを見る
-						</a>
+						</Link>
 					</div>
 				</div>
 			</header>
